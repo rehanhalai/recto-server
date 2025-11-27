@@ -1,0 +1,74 @@
+Prettier Ignore File
+
+Defines files and directories that Prettier should ignore when formatting.
+
+-----------------
+
+BUILD OUTPUT
+
+-----------------
+
+Ignore compiled output folders
+
+/build
+/dist
+/out
+/tmp
+/public
+/coverage
+
+-----------------
+
+DEPENDENCIES
+
+-----------------
+
+Ignore all third-party dependencies (node modules)
+
+/node_modules
+
+-----------------
+
+LOGS AND TEMP
+
+-----------------
+
+Ignore logs and miscellaneous temp files
+
+*.log
+.DS_Store
+Thumbs.db
+
+-----------------
+
+CONFIG & CACHE
+
+-----------------
+
+Common configuration and cache files
+
+.cache
+.env
+.env.local
+.git
+.idea
+.vscode
+
+-----------------
+
+FRAMEWORK SPECIFIC (Add/Remove as needed)
+
+-----------------
+
+Gatsby
+
+.cache/
+public/
+
+Next.js
+
+.next/
+
+SvelteKit
+
+.svelte-kit/
