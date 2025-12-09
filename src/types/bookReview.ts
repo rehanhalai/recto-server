@@ -10,7 +10,6 @@ export interface IReview extends Document {
   content?: string;        // Optional: User might just leave a star rating
   rating: number;          // Float (e.g., 4.5)
   likesCount: number;
-  isSpoiler: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

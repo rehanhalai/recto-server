@@ -10,11 +10,11 @@ if (!fs.existsSync(tempDir)) {
 }
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: function (_req, _file, cb) {
     cb(null, tempDir);
   },
 
-  filename: function (req, file, cb) {
+  filename: function (_req, file, cb) {
     const ext = path.extname(file.originalname);
     const base = file.fieldname;
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (req: any, file: any, cb: any) => {
+const fileFilter = (_req: any, file: any, cb: any) => {
   // example: only images
   const allowed = ["image/jpeg", "image/png", "image/webp"];
 

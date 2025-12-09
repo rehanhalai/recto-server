@@ -9,3 +9,5 @@
  * added OTP based SignUp controller and route ("signup","signup-verify")
  * ADDED GOOGLE AUTHENTICATION METHODDDDD :>
 ### Novmeber 30,2025
+ * added access token (short lived) refresher using refresh token (longed lived)
+ * implimented reset and forget password function with OTP verification.

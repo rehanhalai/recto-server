@@ -1,21 +1,22 @@
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
+import "multer";
 import User from "../models/user.model";
-import { OTPModel, IOTP, IOTPMethods } from "../models/otp.model";
+import { OTPModel } from "../models/otp.model";
 import ApiError from "../utils/ApiError";
 import ApiResponse from "../utils/ApiResponse";
-import { sendOTP, sendOTPforVerification, verifyOTPcode } from "../utils/OTP";
+import { sendOTPforVerification, verifyOTPcode } from "../utils/OTP";
 import { IUser, IUserMethods } from "../types/user";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary";
+import { validateUsername } from "../utils/UserNameChecker";
+import { CustomRequest } from "../types/customRequest";
 
 const options = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-};
-interface CustomRequest extends Request {
-  user?: any;
 }
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
@@ -157,7 +158,7 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const googleAuthRedirect = asyncHandler(
-  (req: Request, res: Response) => {
+  (_req: Request, res: Response) => {
     const GOOGLE_OAUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 
     // Define the parameters for the URL
@@ -288,18 +289,16 @@ export const googleAuthCallback = asyncHandler(
     // Instead of sending JSON, we usually set cookies and redirect the browser
     // to the Frontend Homepage (or a generic success page).
 
-    return (
-      res
-        .status(200)
-        .cookie("refreshToken", newRefreshToken, options)
-        .cookie("accessToken", accessToken, options)
-        // .redirect(process.env.CLIENT_URL || "http://localhost:5173/home");
-        .json({
-          message: "Success",
-          accessToken,
-          newRefreshToken,
-        })
-    );
+    return res
+      .status(200)
+      .cookie("refreshToken", newRefreshToken, options)
+      .cookie("accessToken", accessToken, options)
+      .redirect(process.env.CLIENT_URL_LOCAL || "http://localhost:5173/home");
+    // .json({
+    //   message: "Success",
+    //   accessToken,
+    //   newRefreshToken,
+    // })
   },
 );
 
@@ -374,8 +373,7 @@ export const verifyOTPforPasswordChange = asyncHandler(
       );
 
     const { pendingOTP } = await verifyOTPcode(email, code);
-    if (!pendingOTP)
-      throw new ApiError(404, "invalid OTP");
+    if (!pendingOTP) throw new ApiError(404, "invalid OTP");
 
     const resetToken = jwt.sign(
       {
@@ -388,7 +386,7 @@ export const verifyOTPforPasswordChange = asyncHandler(
       },
     );
 
-      await OTPModel.deleteMany({ email });
+    await OTPModel.deleteMany({ email });
 
     return res
       .status(200)
@@ -402,8 +400,7 @@ export const newPassword = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(400, "All fields are required for new password");
 
   if (password.length <= 8)
-  throw new ApiError(400, "Password must be at least 8 characters long");
-
+    throw new ApiError(400, "Password must be at least 8 characters long");
 
   const decodedToken = jwt.verify(
     resetToken,
@@ -427,7 +424,7 @@ export const newPassword = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const changePassword = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: CustomRequest, res: Response) => {
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword)
       throw new ApiError(400, "All fields are required");
@@ -435,7 +432,7 @@ export const changePassword = asyncHandler(
     if (newPassword.length <= 8)
       throw new ApiError(400, "Password must be at least 8 characters long");
 
-    const userId = (req as CustomRequest).user._id;
+    const userId = req.user?._id;
     const user = await User.findById(userId).select("+hashedPassword");
     if (!user) throw new ApiError(404, "User not found");
 
@@ -453,13 +450,128 @@ export const changePassword = asyncHandler(
 );
 
 export const updateProfile = asyncHandler(
-  async (req: Request, res: Response) => {},
+  async (req: CustomRequest, res: Response) => {
+    const { fullName, bio, userName } = req.body;
+
+    const userId = req.user?._id;
+    const user = await User.findById(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    if (userName) {
+      validateUsername(userName);
+      const userNameCheck = await User.findOne({
+        userName: userName?.trim().toLowerCase(),
+      });
+      if (userNameCheck) throw new ApiError(400, "Username already exists");
+    }
+
+    if (fullName) user.fullName = fullName.trim();
+    if (bio) user.bio = bio.trim();
+    if (userName) user.userName = userName.trim().toLowerCase();
+
+    await user.save();
+
+    const userResponse = user.toObject();
+    res
+      .status(200)
+      .json(new ApiResponse(200, userResponse, "Profile updated successfully"));
+  },
 );
 
 export const updateEmail = asyncHandler(
-  async (req: Request, res: Response) => {},
+  async (_req: Request, _res: Response) => {
+    // To be implemented
+  },
 );
 
 export const updateAvatarAndBanner = asyncHandler(
-  async (req: Request, res: Response) => {},
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id;
+    const user = await User.findById(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    const avatarLocalPath = files?.['avatarImage']?.[0]?.path;
+    const coverImageLocalPath = files?.['coverImage']?.[0]?.path;
+
+    if (!avatarLocalPath && !coverImageLocalPath) {
+      throw new ApiError(400, "No files provided");
+    }
+
+    const avataPromise = avatarLocalPath
+      ? uploadOnCloudinary(avatarLocalPath)
+      : Promise.resolve(null);
+    const coverPromise = coverImageLocalPath
+      ? uploadOnCloudinary(coverImageLocalPath)
+      : Promise.resolve(null);
+
+    const [newAvatar, newCover] = await Promise.all([
+      avataPromise,
+      coverPromise,
+    ]);
+
+    if (newAvatar) {
+      // Only delete the old avatar if it exists and is a Cloudinary URL
+      if (user.avatarImage && user.avatarImage.includes("cloudinary.com")) {
+        await deleteFromCloudinary(user.avatarImage);
+      }
+      user.avatarImage = newAvatar.secure_url;
+    }
+
+    if (newCover) {
+      // Only delete the old cover if it exists
+      if (user.coverImage) {
+        await deleteFromCloudinary(user.coverImage);
+      }
+      user.coverImage = newCover.secure_url;
+    }
+
+    await user.save();
+
+    const userResponse = user.toObject();
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          userResponse,
+          "Avatar and/or Banner updated successfully",
+        ),
+      );
+  },
 );
+
+export const userNameAvailability = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { username } = req.query;
+    validateUsername(username?.toString().trim() || "");
+    const existingUser = await User.findOne({
+      userName: username?.toString().trim().toLowerCase(),
+    });
+
+    // 3. Return a clean boolean/status
+    const isAvailable = !existingUser;
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { isAvailable },
+          isAvailable ? "available" : "taken",
+        ),
+      );
+  },
+);
+
+export const whoami = asyncHandler(async (req: CustomRequest, res: Response) => {
+  const userId = req.user?._id;
+  const user = await User.findById(userId).select("-googleId");
+  if (!user) throw new ApiError(404, "User not found");
+
+  const userResponse = user.toObject();
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userResponse, "User fetched successfully"));
+});

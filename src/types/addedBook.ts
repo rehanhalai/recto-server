@@ -10,9 +10,8 @@ export interface IUserBook extends Document{
   userId: Types.ObjectId | IUser; // Can be ID or populated User
   bookId: Types.ObjectId | IBook; // Can be ID or populated Book
   status: ReadingStatus;
-  currentPage: number; // Current page number or percentage
-  startDate?: Date;
-  finishDate?: Date;
+  startedAt?: Date;
+  finishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

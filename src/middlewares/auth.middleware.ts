@@ -8,8 +8,8 @@ interface CustomRequest extends Request {
   user?: any; // Define the 'user' property
 }
 
-export const VerifyJWT = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
+export const VerifyJWT = asyncHandler(  
+  async (req: Request, _res: Response, next: NextFunction) => {
     try {
         const token =
           req.cookies?.accessToken ||

@@ -27,11 +27,7 @@ const reviewSchema = new Schema<IReview>(
     likesCount: {
       type: Number,
       default: 0,
-    },
-    isSpoiler: {
-      type: Boolean,
-      default: false,
-    },
+    }
   },
   {
     timestamps: true,

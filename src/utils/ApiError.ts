@@ -4,7 +4,7 @@ class ApiError extends Error{
     statusCode: number;
     errors: string[];
     data: any;
-    message: string;
+    override message: string;
     success: boolean;
 
     constructor(
