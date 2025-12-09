@@ -15,19 +15,14 @@ const userBookSchema = new Schema<IUserBook>(
     },
     status: {
       type: String,
-      enum: ["reading", "finished", "dropped", "wishlist"],
+      enum: ["reading", "finished", "wishlist"],
       required: true,
       default: "wishlist", // Good default entry point
     },
-    currentPage: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    startDate: {
+    startedAt: {
       type: Date,
     },
-    finishDate: {
+    finishedAt: {
       type: Date,
     },
   },

@@ -9,7 +9,8 @@ const bookSchema = new mongoose.Schema<IBook>(
       unique: true,
     },
     isbn: {
-      type: String,
+      type: [String],
+      default: [],
     },
     title: {
       type: String,
@@ -23,20 +24,21 @@ const bookSchema = new mongoose.Schema<IBook>(
       required: true,
     },
     genres: {
-      type: [String],
-      required: true,
+      type: [String]
     },
     releaseDate: {
-      type: Date,
+      type: String,
     },
     description: {
       type: String,
     },
-    pageCount: {
-      type: Number,
-    },
     averageRating: {
       type: Number,
+      default: 0,
+    },
+    ratingsCount: {
+      type: Number,
+      default: 0,
     },
     languages: {
       type: [String],
@@ -47,6 +49,10 @@ const bookSchema = new mongoose.Schema<IBook>(
     },
     cover_i: {
       type: Number,
+    },
+    alternativeIds: {
+      type: [String], 
+      default: [],
     },
   },
   {
