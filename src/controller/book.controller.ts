@@ -40,13 +40,18 @@ export const getBookController = asyncHandler(
       $or: [{ externalId }, { alternativeIds: externalId }],
     });
 
-    if (existingBook)
-      return res
-        .status(200)
-        .json(new ApiResponse(200, existingBook, "Book fetched successfully"));
-
     const apiPromise = openLibClient.get(`/works/${externalId}.json`);
     let duplicateCheckPromise: Promise<any> = Promise.resolve(null);
+
+    // OPTIMIZATION: Only search by title if we DIDN'T find it by ID
+    if (!existingBook && title && authors) {
+      const titleRegex = new RegExp(`^${title}$`, "i");
+
+      duplicateCheckPromise = Book.findOne({
+        title: { $regex: titleRegex },
+        authors: { $regex: authors, $options: "i" },
+      });
+    }
 
     if (title && authors) {
       const titleRegex = new RegExp(`^${title}$`, "i");
@@ -70,47 +75,55 @@ export const getBookController = asyncHandler(
       rest,
     );
 
-    if (duplicateBook) {
+    const targetBook = existingBook || duplicateBook;
+
+    if (targetBook) {
       let isUpdated = false;
 
       const newBookDesc = newBook.description || "";
-      const currentBookDesc = duplicateBook.description || "";
+      const currentBookDesc = targetBook.description || "";
 
       if (newBookDesc && newBookDesc.length > currentBookDesc.length) {
-        duplicateBook.description = newBookDesc;
+        targetBook.description = newBookDesc;
         isUpdated = true;
       }
       // B. Enrich Cover
-      if (!duplicateBook.coverImage && newBook.coverImage) {
-        duplicateBook.coverImage = newBook.coverImage;
-        duplicateBook.cover_i = newBook.cover_i;
+      if (!targetBook.coverImage && newBook.coverImage) {
+        targetBook.coverImage = newBook.coverImage;
+        targetBook.cover_i = newBook.cover_i;
         isUpdated = true;
       }
 
       // C. Enrich Subtitle
-      if (!duplicateBook.subtitle && newBook.subtitle) {
-        duplicateBook.subtitle = newBook.subtitle;
+      if (!targetBook.subtitle && newBook.subtitle) {
+        targetBook.subtitle = newBook.subtitle;
         isUpdated = true;
       }
 
       // D. Enrich Release Date
-      if (!duplicateBook.releaseDate && newBook.releaseDate) {
-        duplicateBook.releaseDate = newBook.releaseDate;
+      if (!targetBook.releaseDate && newBook.releaseDate) {
+        targetBook.releaseDate = newBook.releaseDate;
         isUpdated = true;
       }
 
       // Always link the IDs so we find it faster next time
-      if (!duplicateBook?.alternativeIds?.includes(externalId)) {
-        duplicateBook?.alternativeIds?.push(externalId);
+      // Check if externalId is already the main ID or in alternatives
+      const isIdLinked =
+        targetBook.externalId === externalId ||
+        targetBook.alternativeIds?.includes(externalId);
+
+      if (!isIdLinked) {
+        targetBook.alternativeIds = targetBook.alternativeIds || [];
+        targetBook.alternativeIds.push(externalId);
         isUpdated = true;
       }
 
       if (isUpdated) {
-        await duplicateBook.save();
+        await targetBook.save();
       }
       return res
         .status(200)
-        .json(new ApiResponse(200, duplicateBook, "Book fetched successfully"));
+        .json(new ApiResponse(200, targetBook, "Book fetched successfully"));
     }
 
     if (newBook.externalId !== externalId) {
@@ -135,8 +148,7 @@ export const tbrBookController = asyncHandler(
 
     const updates: any = { status };
 
-    if (startedAt)
-      updates.startedAt = startedAt ? new Date(startedAt) : null;
+    if (startedAt) updates.startedAt = startedAt ? new Date(startedAt) : null;
 
     if (status === "finished" && finishedAt) {
       updates.finishedAt = finishedAt ? new Date(finishedAt) : null;
@@ -158,9 +170,7 @@ export const tbrBookController = asyncHandler(
 
     return res
       .status(200)
-      .json(
-        new ApiResponse(200, addedBook, "Book added to TBR successfully"),
-      );
+      .json(new ApiResponse(200, addedBook, "Book added to TBR successfully"));
   },
 );
 
@@ -184,132 +194,229 @@ export const removeTbrBookController = asyncHandler(
   },
 );
 
-export const fetchReadingStatus = asyncHandler( async (req: CustomRequest, res: Response) => {
-  const userId = req.user?._id;
-  const {status} = req.query;
+export const fetchReadingStatus = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id;
+    const { status } = req.query;
 
-  if (!userId || !status) {
-    throw new ApiError(400, "userId or status is required");
-  }
-
-  const userBooks = await UserBookModel.find({ userId, status: status }).populate('bookId','title authors coverImage externalId ');
-  if(!userBooks || userBooks.length === 0) {
-    throw new ApiError(404, "No books found for the given status");
-  }
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, userBooks, "Books fetched successfully"));
-});
-
-export const addReview = asyncHandler( async (req:CustomRequest , res: Response) => {
-  const userId = req.user?._id;
-  const { bookId, content, rating } = req.body;
-  
-  if (!userId || !bookId || rating === undefined) {
-    throw new ApiError(400, "userId, bookId, and rating are required");
-  }
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try{
-    const newReview = await ReviewModel.create([{
-      userId,
-      bookId,
-      content,
-      rating
-    }], { session: session });
-
-
-    const book = await Book.findById(bookId).session(session);
-    if(!book){
-      throw new ApiError(404, "Book not found");
+    if (!userId || !status) {
+      throw new ApiError(400, "userId or status is required");
     }
 
-    const totalRating = (book.averageRating || 0) * (book.ratingsCount || 0);
-    const newCount = (book.ratingsCount || 0) + 1;
-    const newAverage = (totalRating + rating) / newCount;
-
-    await Book.updateOne(
-      { _id : book._id },
-      {
-        $set : {
-          averageRating: newAverage.toFixed(1),
-          ratingsCount: newCount
-        }
-      },
-      { session }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
+    const userBooks = await UserBookModel.find({
+      userId,
+      status: status,
+    }).populate("bookId", "title authors coverImage externalId ");
+    if (!userBooks || userBooks.length === 0) {
+      throw new ApiError(404, "No books found for the given status");
+    }
 
     return res
       .status(200)
-      .json(new ApiResponse(200, newReview[0], "Review added successfully"));
+      .json(new ApiResponse(200, userBooks, "Books fetched successfully"));
+  },
+);
 
-  } catch(error : Error | any){
-    await session.abortTransaction();
-    session.endSession();
+export const addReview = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id;
+    const { bookId, content, rating } = req.body;
 
-    if(error.code === 11000){
-      throw new ApiError(400, "User has already reviewed this book");
-    }
-    
-    throw new ApiError(500, "Internal Server Error");
-  }
-});
-
-export const removeReview = asyncHandler( async (req:CustomRequest , res: Response) => {
-  const userId = req.user?._id;
-  const { reviewId } = req.body;
-
-  if (!userId || !reviewId) {
-    throw new ApiError(400, "userId and reviewId are required");
-  }
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const deletedReview = await ReviewModel.findOneAndDelete({ _id: reviewId, userId  }).session(session);
-    if(!deletedReview){
-      throw new ApiError(404, "Review not found or you are not authorized to delete this review");
+    if (!userId || !bookId || rating === undefined) {
+      throw new ApiError(400, "userId, bookId, and rating are required");
     }
 
-    const book = await Book.findById(deletedReview.bookId).session(session);
-    if(!book){
-      // This case is unlikely if data is consistent, but good to handle.
-      // The review is already deleted, so we can just commit and report success.
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const newReview = await ReviewModel.create(
+        [
+          {
+            userId,
+            bookId,
+            content,
+            rating,
+          },
+        ],
+        { session: session },
+      );
+
+      const book = await Book.findById(bookId).session(session);
+      if (!book) {
+        throw new ApiError(404, "Book not found");
+      }
+
+      const totalRating = (book.averageRating || 0) * (book.ratingsCount || 0);
+      const newCount = (book.ratingsCount || 0) + 1;
+      const newAverage = (totalRating + rating) / newCount;
+
+      await Book.updateOne(
+        { _id: book._id },
+        {
+          $set: {
+            averageRating: newAverage.toFixed(1),
+            ratingsCount: newCount,
+          },
+        },
+        { session },
+      );
+
       await session.commitTransaction();
+      session.endSession();
+
       return res
         .status(200)
-        .json(new ApiResponse(200, null, "Review removed successfully, but associated book was not found."));
+        .json(new ApiResponse(200, newReview[0], "Review added successfully"));
+    } catch (error: Error | any) {
+      await session.abortTransaction();
+      session.endSession();
+
+      if (error.code === 11000) {
+        throw new ApiError(400, "User has already reviewed this book");
+      }
+
+      throw new ApiError(500, "Internal Server Error");
+    }
+  },
+);
+
+export const removeReview = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id;
+    const { reviewId } = req.params;
+    const userRole = req.user?.role;
+
+    if (!userId || !reviewId) {
+      throw new ApiError(400, "userId and reviewId are required");
     }
 
-    const totalRating = (book.averageRating || 0) * (book.ratingsCount || 0);
-    const newCount = (book.ratingsCount || 1) - 1;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    let newAverage = 0;
-    if (newCount > 0) {
-      newAverage = (totalRating - deletedReview.rating) / newCount;
+    try {
+      const review = await ReviewModel.findById(reviewId).session(session);
+      if (!review) {
+        throw new ApiError(404, "Review not found");
+      }
+
+      const isOwner = review.userId.toString() === userId.toString();
+      const isAdmin = userRole === "admin" || userRole === "librarian"; // Adjust roles as needed
+
+      if (!isOwner && !isAdmin) {
+        throw new ApiError(403, "You are not authorized to delete this review");
+      }
+
+      await ReviewModel.findByIdAndDelete(reviewId).session(session);
+
+      const book = await Book.findById(review.bookId).session(session);
+
+      if (book) {
+        const totalRating =
+          (book.averageRating || 0) * (book.ratingsCount || 0);
+        const newCount = (book.ratingsCount || 1) - 1;
+
+        let newAverage = 0;
+        if (newCount > 0) {
+          // Subtract the specific rating of the review we just deleted
+          newAverage = (totalRating - review.rating) / newCount;
+        }
+
+        await Book.updateOne(
+          { _id: book._id },
+          {
+            $set: {
+              // Parse float to ensure it saves as a Number, not a String
+              averageRating: parseFloat(newAverage.toFixed(1)),
+              ratingsCount: newCount,
+            },
+          },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "Review removed successfully"));
+    } catch (error) {
+      await session.abortTransaction();
+      throw error; // Re-throw the original error to be handled by asyncHandler
+    } finally {
+      session.endSession();
+    }
+  },
+);
+
+export const updateReview = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id;
+    const { reviewId } = req.params;
+    const { content, rating } = req.body; // User might update content, rating, or both
+
+    if (!userId || !reviewId) {
+      throw new ApiError(400, "User ID and Review ID are required");
     }
 
-    await Book.updateOne(
-      { _id: book._id },
-      { $set: { averageRating: newAverage.toFixed(1), ratingsCount: newCount } },
-      { session }
-    );
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    await session.commitTransaction();
+    try {
+      // 1. Find the Review (Must belong to the user)
+      const review = await ReviewModel.findOne({
+        _id: reviewId,
+        userId,
+      }).session(session);
 
-    return res
-      .status(200)
-      .json(new ApiResponse(200, null, "Review removed successfully"));
-  } catch (error) {
-    await session.abortTransaction();
-    throw error; // Re-throw the original error to be handled by asyncHandler
-  } finally {
-    session.endSession();
-  }
-});
+      if (!review) {
+        throw new ApiError(404, "Review not found or you are not the owner");
+      }
+
+      // 2. Capture the old rating before we change it
+      const oldRating = review.rating;
+      const isRatingChanged = rating !== undefined && rating !== oldRating;
+
+      // 3. Update the Review Document
+      if (content) review.content = content;
+      if (rating !== undefined) review.rating = rating;
+
+      await review.save({ session });
+
+      // 4. Update Book Stats (ONLY if rating changed)
+      if (isRatingChanged) {
+        const book = await Book.findById(review.bookId).session(session);
+
+        if (book) {
+          // Math: Remove the old rating weight, add the new rating weight
+          const currentTotal =
+            (book.averageRating || 0) * (book.ratingsCount || 0);
+          // Be careful: ratingsCount does NOT change, only the average does
+          const adjustedTotal = currentTotal - oldRating + rating;
+
+          // Avoid division by zero (shouldn't happen if book exists, but safety first)
+          const count = book.ratingsCount || 1;
+          const newAverage = adjustedTotal / count;
+
+          await Book.updateOne(
+            { _id: book._id },
+            {
+              $set: { averageRating: parseFloat(newAverage.toFixed(1)) },
+            },
+            { session },
+          );
+        }
+      }
+
+      await session.commitTransaction();
+
+      return res
+        .status(200)
+        .json(new ApiResponse(200, review, "Review updated successfully"));
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  },
+);
