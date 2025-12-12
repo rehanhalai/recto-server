@@ -56,9 +56,7 @@ router.route("/update-profileimage").post(
   ]),
   updateAvatarAndBanner,
 );
-
 router.route("/check").get(userNameAvailability);
-
 router.route("/whoami").get(VerifyJWT,whoami);
 
 export default router;

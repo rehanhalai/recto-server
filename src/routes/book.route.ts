@@ -11,6 +11,21 @@ import { VerifyJWT } from "../middlewares/auth.middleware";
 
 const router = Router();
 
+// Ex for different roles like admin \ librarian \ moderators
+//   router.route("/stats").get(
+//     VerifyJWT, 
+//     VerifyRole(["admin"]), 
+//     getSystemStats
+// );
+
+// // Example: Allow multiple roles
+// router.route("/manage-content").patch(
+//     VerifyJWT,
+//     VerifyRole(["admin", "moderator"]), 
+//     manageContentController
+// );
+
+
 router.route("/getbook").post(getBookController);
 router.route("/tbrbook").post(VerifyJWT, tbrBookController);
 router.route("/remove-tbrbook").delete(VerifyJWT, removeTbrBookController);
