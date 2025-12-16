@@ -160,6 +160,50 @@ class ReviewServices {
       session.endSession();
     }
   };
+
+  getAllReviewsForBook = async (
+    bookId: string,
+    userId: string | null,
+    page: number = 1,
+    limit: number = 10,
+  ) => {
+    let myReview = null;
+    let reviews = [];
+
+    if (page === 1 && userId)
+      myReview = await ReviewModel.findOne({ bookId, userId }).populate(
+        "userId",
+        "userName avatarImage",
+      );
+
+    const skip = (page - 1) * limit;
+    const filter: any = { bookId };
+    if (userId) filter.userId = { $ne: userId };
+
+    const otherReviews = await ReviewModel.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId", "userName avatarImage");
+
+    if (page === 1 && myReview) reviews = [myReview, ...otherReviews];
+    else reviews = otherReviews;
+
+    // 3. Optional: Get total count (useful for frontend to know when to stop)
+    const totalReviews = await ReviewModel.countDocuments({ bookId });
+    const totalPages = Math.ceil(totalReviews / limit);
+
+    return {
+      reviews,
+      userHasReviewed: !!myReview,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalReviews,
+        hasMore: page < totalPages,
+      },
+    };
+  };
 }
 
 export const reviewServices = new ReviewServices();

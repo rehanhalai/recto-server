@@ -8,12 +8,7 @@ import { bookServices } from "../services/book.service";
 export const getBookController = asyncHandler(
   async (req: Request, res: Response) => {
     const { externalId, ...rest } = req.body;
-    const title = req.body.title as string;
-    const authors = Array.isArray(rest.authors)
-      ? rest.authors[0]
-      : rest.authors || "";
-
-    if (!externalId) throw new ApiError(400, "externalId is required");
+    const { title, authors } = req.body;
 
     const book = await bookServices.getBook(externalId, title, authors, rest);
 
@@ -25,18 +20,15 @@ export const getBookController = asyncHandler(
 
 export const tbrBookController = asyncHandler(
   async (req: CustomRequest, res: Response) => {
-    const userId = req.user?._id;
+    const userId = req.user?._id as string;
     const { bookId, status, startedAt, finishedAt } = req.body;
-
-    if (!userId || !bookId || !status)
-      throw new ApiError(400, "userId, bookId and status are required");
 
     const addedBook = await bookServices.tbrBook(
       userId,
       bookId,
       status,
-      startedAt,
-      finishedAt,
+      startedAt as Date,
+      finishedAt as Date,
     );
 
     return res
@@ -47,15 +39,12 @@ export const tbrBookController = asyncHandler(
 
 export const removeTbrBookController = asyncHandler(
   async (req: CustomRequest, res: Response) => {
-    const userId = req.user?._id;
-    const { _id } = req.body;
+    const userId = req.user?._id as string;
+    const { tbrId } = req.params as { tbrId: string };
 
-    if (!userId || !_id)
-      throw new ApiError(400, "userId and bookId are required");
+    const deletedData = await bookServices.tbrRemoveBook(userId, tbrId);
 
-    const deltedData = await bookServices.tbrRemoveBook(userId, _id);
-
-    if (!deltedData) throw new ApiError(404, "Book not found in TBR");
+    if (!deletedData) throw new ApiError(404, "Book not found in TBR");
 
     return res
       .status(200)
@@ -65,15 +54,12 @@ export const removeTbrBookController = asyncHandler(
 
 export const fetchBooksBasedOnStatus = asyncHandler(
   async (req: CustomRequest, res: Response) => {
-    const userId = req.user?._id;
-    const { status } = req.query;
-
-    if (!userId || !status)
-      throw new ApiError(400, "userId or status is required");
+    const userId = req.user?._id as string;
+    const { status } = req.query as { status: string };
 
     const userBooks = await bookServices.fetchBooksBasedOnStatus(
       userId,
-      status as string,
+      status,
     );
 
     return res

@@ -19,7 +19,7 @@ class BookServices {
   getBook = async (
     externalId: string,
     title: string,
-    authors: string,
+    authors: string[],
     otherInfo: Object,
   ) => {
     let targetBook = await Book.findOne({
@@ -31,7 +31,7 @@ class BookServices {
       const titleRegex = new RegExp(`^${title}$`, "i");
       targetBook = await Book.findOne({
         title: { $regex: titleRegex },
-        authors: { $regex: authors, $options: "i" },
+        authors: { $all: authors },
       });
     }
 
@@ -126,7 +126,6 @@ class BookServices {
     startedAt: Date,
     finishedAt: Date,
   ) => {
-
     try {
       const updates: any = { status };
 
@@ -140,8 +139,6 @@ class BookServices {
         if (startedAt) updates.startedAt = new Date(startedAt);
         updates.finishedAt = finishedAt ? new Date(finishedAt) : new Date();
       }
-
-      console.log("Constructed updates object:", updates);
 
       const userBook = await UserBookModel.findOneAndUpdate(
         { userId, bookId },
@@ -158,19 +155,14 @@ class BookServices {
           upsert: true,
         },
       );
-
-      console.log("Result from findOneAndUpdate:", userBook);
-      console.log("---------------------------------");
       return userBook;
     } catch (error) {
-      console.error("!!! Critical error in tbrBook service !!!", error);
-      console.log("---------------------------------");
       throw error; // Re-throw the error to be handled by asyncHandler
     }
   };
 
-  tbrRemoveBook = async (userId: string, bookId: string) => {
-    return await UserBookModel.findOneAndDelete({ userId, bookId });
+  tbrRemoveBook = async (userId: string, tbrId: string) => {
+    return await UserBookModel.findOneAndDelete({ _id: tbrId, userId });
   };
 
   fetchBooksBasedOnStatus = async (userId: string, status: string) => {

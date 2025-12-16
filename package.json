@@ -18,7 +18,8 @@
     "mongoose": "^9.0.0",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.11",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

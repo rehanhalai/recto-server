@@ -5,6 +5,29 @@ import ApiResponse from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Response } from "express";
 
+export const getAllReviewsForBook = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id || null;
+    const { bookId } = req.params;
+
+    if (!bookId) throw new ApiError(400, "bookId are required");
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const result = await reviewServices.getAllReviewsForBook(
+      bookId,
+      userId,
+      page,
+      limit,
+    );
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, result, "Reviews fetched successfully"));
+  },
+);
+
 export const addReview = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const userId = req.user?._id;
