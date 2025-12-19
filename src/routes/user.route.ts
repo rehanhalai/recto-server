@@ -77,7 +77,7 @@ router.route("/update-email").patch(VerifyJWT, updateEmail); // Add validation i
 
 // File Uploads
 // Note: Multer ('upload') must run BEFORE validation if you add text fields to this request later
-router.route("/update-profileimage").post(
+router.route("/update-profileimage").patch(
   VerifyJWT,
   upload.fields([
     { name: "avatarImage", maxCount: 1 },

@@ -123,34 +123,48 @@ class UserServices {
     userId: string,
     avatarImageLocalPath: string,
     coverImageLocalPath: string,
+    removeAvatar = false,
+    removeCover = false,
   ) => {
     const user = await User.findById(userId);
     if (!user) throw new ApiError(404, "User not found");
 
-    // Upload new images
-    const [avatarImage, coverImage] = await Promise.all([
-      avatarImageLocalPath ? uploadOnCloudinary(avatarImageLocalPath) : null,
-      coverImageLocalPath ? uploadOnCloudinary(coverImageLocalPath) : null,
-    ]);
-
-    // Delete old avatar if new one exists
-    if (avatarImage) {
-      if (user.avatarImage?.includes("cloudinary.com")) {
+    // --- Avatar Logic ---
+    if (removeAvatar) {
+      if (user.avatarImage && user.avatarImage.includes("cloudinary.com")) {
         await deleteFromCloudinary(user.avatarImage);
       }
-      user.avatarImage = avatarImage.secure_url;
+      user.avatarImage = "";
+    } else if (avatarImageLocalPath) {
+      const newAvatar = await uploadOnCloudinary(avatarImageLocalPath);
+      if (newAvatar) {
+        if (user.avatarImage && user.avatarImage.includes("cloudinary.com")) {
+          await deleteFromCloudinary(user.avatarImage);
+        }
+        user.avatarImage = newAvatar.url;
+      }
     }
 
-    // Delete old cover if new one exists
-    if (coverImage) {
-      if (user.coverImage?.includes("cloudinary.com")) {
+    // --- Cover Image Logic ---
+    if (removeCover) {
+      if (user.coverImage && user.coverImage.includes("cloudinary.com")) {
         await deleteFromCloudinary(user.coverImage);
       }
-      user.coverImage = coverImage.secure_url;
+      user.coverImage = "";
+    } else if (coverImageLocalPath) {
+      const newCover = await uploadOnCloudinary(coverImageLocalPath);
+      if (newCover) {
+        if (user.coverImage && user.coverImage.includes("cloudinary.com")) {
+          await deleteFromCloudinary(user.coverImage);
+        }
+        user.coverImage = newCover.url;
+      }
     }
 
-    return await user.save().then((user) => user.toObject());
-  };
+    const response = await user.save();
+
+    return response;
+  }
 
   forgotPassword = async (email: string) => {
     const user = await User.findOne({ email });

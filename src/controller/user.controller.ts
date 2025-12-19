@@ -198,13 +198,25 @@ export const updateAvatarAndBanner = asyncHandler(
     const userId = req.user?._id as string;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
+    // Check for uploaded files
     const avatarLocalPath = files?.["avatarImage"]?.[0]?.path;
     const coverImageLocalPath = files?.["coverImage"]?.[0]?.path;
+
+    // Check for remove flags in the body
+    const removeAvatar = req.body.avatarImage === "remove";
+    const removeCover = req.body.coverImage === "remove";
+
+    // A file upload should always take precedence over a remove flag.
+    // So, we only trigger a remove if the flag is present AND no file is uploaded.
+    const shouldRemoveAvatar = removeAvatar && !avatarLocalPath;
+    const shouldRemoveCover = removeCover && !coverImageLocalPath;
 
     const userResponse = await userServices.updateAvatarAndBanner(
       userId,
       avatarLocalPath || "",
       coverImageLocalPath || "",
+      shouldRemoveAvatar,
+      shouldRemoveCover,
     );
 
     return res
