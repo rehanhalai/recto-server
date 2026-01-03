@@ -64,6 +64,11 @@ const bookSchema = new mongoose.Schema<IBook>(
   },
 );
 
-bookSchema.index({ title: "text", authors: "text" });
+// OPTIMIZED INDEXES for fast queries
+// Note: externalId has unique: true in schema, so no need to index here
+bookSchema.index({ title: 1, authors: 1 }); // Compound index for title+author lookups
+bookSchema.index({ alternativeIds: 1 }); // Alternative ID lookups
+bookSchema.index({ enrichmentStatus: 1, updatedAt: -1 }); // Enrichment tracking
+bookSchema.index({ updatedAt: -1 }); // Time-based queries
 
 export default mongoose.model<IBook>("Book", bookSchema);

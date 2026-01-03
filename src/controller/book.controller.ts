@@ -5,12 +5,31 @@ import ApiResponse from "../utils/ApiResponse";
 import { CustomRequest } from "../types/customRequest";
 import { bookServices } from "../services/book.service";
 
+/**
+ * Get Book Controller (OPTIMIZED)
+ * 
+ * IMPROVEMENTS:
+ * 1. Fast validation
+ * 2. Cache headers for client-side caching
+ * 3. Minimal response transformation
+ * 4. Early error returns
+ * 
+ * TARGET: <100ms for cached hits
+ */
 export const getBookController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { externalId, ...rest } = req.body;
-    const { title, authors } = req.body;
+    const { externalId, title, authors, ...rest } = req.body;
 
+    // Fast validation
+    if (!externalId) {
+      throw new ApiError(400, "externalId is required");
+    }
+
+    // Fetch book (uses optimized query service)
     const book = await bookServices.getBook(externalId, title, authors, rest);
+
+    // Set cache headers for client-side caching
+    res.setHeader("Cache-Control", "public, max-age=300"); // 5 min cache
 
     return res
       .status(200)
