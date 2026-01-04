@@ -28,9 +28,6 @@ export const getBookController = asyncHandler(
     // Fetch book (uses optimized query service)
     const book = await bookServices.getBook(externalId, title, authors, rest);
 
-    // Set cache headers for client-side caching
-    res.setHeader("Cache-Control", "public, max-age=300"); // 5 min cache
-
     return res
       .status(200)
       .json(new ApiResponse(200, book, "Book fetched successfully"));

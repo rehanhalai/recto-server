@@ -8,7 +8,7 @@ import { IBook } from "../../types/book";
 // Optimized HTTP client with connection pooling
 const openLibClient = axios.create({
   baseURL: "https://openlibrary.org",
-  httpAgent: new https.Agent({
+  httpsAgent: new https.Agent({
     keepAlive: true,
     maxSockets: 50,        // Increased connection pool
     maxFreeSockets: 10,
@@ -52,6 +52,7 @@ class BookQueryService {
     let targetBook = await Book.findOne({
       $or: [{ externalId }, { alternativeIds: externalId }],
     }).exec();
+    let bookFoundByIdLookup = !!targetBook;
 
     // --- STEP 2: Fallback to Title+Authors (Only if ID lookup fails) ---
     if (!targetBook && title && authors) {
@@ -62,7 +63,9 @@ class BookQueryService {
     let shouldFetch = true;
     if (targetBook) {
       // Check if this is an alternative workId (different from primary)
+      // Only treat as alternative if found via ID lookup, not title+authors
       const isAlternativeWorkId = 
+        bookFoundByIdLookup &&
         targetBook.externalId !== externalId &&
         !targetBook.alternativeIds?.includes(externalId);
       
@@ -100,6 +103,9 @@ class BookQueryService {
     }
 
     // --- STEP 5: Normalize API Data ---
+    if (!apiData) {
+      throw new ApiError(500, "Failed to fetch book data from OpenLibrary");
+    }
     const newBook = OpenLibraryFactory.normalizeWorkData(apiData, {
       title,
       authors,
@@ -111,10 +117,10 @@ class BookQueryService {
       // Enrich existing document with new data
       let isUpdated = false;
 
-      // A. Description enrichment (prefer longer)
+      // A. Description enrichment (prefer longer, skip if identical)
       const newDesc = newBook.description || "";
       const currentDesc = targetBook.description || "";
-      if (newDesc && newDesc.length > currentDesc.length) {
+      if (newDesc && newDesc !== currentDesc && newDesc.length > currentDesc.length) {
         targetBook.description = newDesc;
         isUpdated = true;
       }
@@ -140,8 +146,8 @@ class BookQueryService {
 
       // E. Author enrichment (merge if new data has additional authors)
       if (newBook.authors && newBook.authors.length > 0) {
-        const mergedAuthors = this.mergeAuthors(targetBook.authors, newBook.authors);
-        if (mergedAuthors.length > targetBook.authors.length) {
+        const mergedAuthors = this.mergeAuthors(targetBook.authors || [], newBook.authors);
+        if (mergedAuthors.length > (targetBook.authors?.length || 0)) {
           targetBook.authors = mergedAuthors;
           isUpdated = true;
         }
@@ -188,6 +194,11 @@ class BookQueryService {
     }
 
     const createdBook = await Book.create(newBook);
+
+    // Fire-and-forget: backfill ISBN-13 from editions API (non-blocking) only if missing
+    if (!createdBook.isbn13) {
+      void this.backfillIsbn13(createdBook._id.toString(), createdBook.externalId || externalId);
+    }
     return createdBook;
   };
 
@@ -210,7 +221,7 @@ class BookQueryService {
 
     // Strategy 2: Exact title + partial author match
     // (Handles cases where one edition has additional editors/translators)
-    if (authors.length > 0) {
+    if (authors && authors.length > 0) {
       book = await Book.findOne({
         title: { $regex: exactRegex },
         authors: { $in: authors }, // At least one author matches
@@ -223,12 +234,17 @@ class BookQueryService {
     }
 
     // Strategy 3: Normalized title match (remove common separators and extras)
+    // Skip if no authors (would scan entire collection)
+    if (!authors || authors.length === 0) {
+      return null;
+    }
+
     const normalizedTitle = this.normalizeTitle(title);
     
     // Find books with at least one matching author
-    const candidateBooks = await Book.find({
-      authors: { $in: authors },
-    })
+    const candidateBooks = await Book.find(
+      { authors: { $in: authors } }
+    )
       .select("title authors externalId alternativeIds")
       .lean<IBook[]>()
       .exec();
@@ -334,6 +350,59 @@ class BookQueryService {
     }
 
     return merged;
+  };
+
+  /**
+   * Non-blocking backfill of ISBN-13 from editions endpoint
+   * Runs only once after book creation; does not impact user response time
+   */
+  private backfillIsbn13 = async (bookId: string, workId: string) => {
+    if (!workId) return;
+
+    // Avoid work if already set
+    const existing = await Book.findById(bookId).select("isbn13").lean<{ isbn13?: string }>();
+    if (existing?.isbn13) return;
+
+    const attemptFetch = async () => {
+      const response = await openLibClient.get(`/works/${workId}/editions.json`, {
+        params: { limit: 5 },
+      });
+
+      const entries = (response.data?.entries || response.data?.editions || []) as any[];
+      let isbn13: string | null = null;
+
+      for (const edition of entries) {
+        const candidate = Array.isArray(edition?.isbn_13)
+          ? edition.isbn_13.find((i: string) => typeof i === "string" && i.trim().length > 0)
+          : null;
+        if (candidate) {
+          isbn13 = candidate.trim();
+          break;
+        }
+      }
+
+      if (isbn13) {
+        // Only set if not already present to avoid repeated runs
+        await Book.findOneAndUpdate(
+          { _id: bookId, $or: [{ isbn13: { $exists: false } }, { isbn13: "" }, { isbn13: null }] },
+          { $set: { isbn13 } },
+          { new: false },
+        ).exec();
+      }
+    };
+
+    // Try once, and retry once on failure (non-blocking, no throw)
+    try {
+      await attemptFetch();
+    } catch (_err) {
+      try {
+        // brief delay before retry to avoid immediate repeat failure
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await attemptFetch();
+      } catch (_err2) {
+        return; // swallow to keep non-blocking
+      }
+    }
   };
 
   /**
