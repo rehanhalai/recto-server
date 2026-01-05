@@ -4,6 +4,8 @@ import ApiError from "../utils/ApiError";
 import ApiResponse from "../utils/ApiResponse";
 import { CustomRequest } from "../types/customRequest";
 import { bookServices } from "../services/book/book.service";
+import { affiliateService } from "../services/book/affiliate.service";
+import Book from "../models/books.model";
 
 /**
  * Get Book Controller (OPTIMIZED)
@@ -83,3 +85,33 @@ export const fetchBooksBasedOnStatus = asyncHandler(
       .json(new ApiResponse(200, userBooks, "Books fetched successfully"));
   },
 );
+
+export const getPurchaseLinksController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { bookId } = req.params;
+
+    // Fetch book from database
+    const book = await Book.findById(bookId);
+    if (!book) {
+      throw new ApiError(404, "Book not found");
+    }
+
+    // // Generate purchase links for all platforms
+    // const purchaseLinks = affiliateService.generatePurchaseLinks(book);
+    
+    // Optionally group by category
+    const grouped = affiliateService.groupPurchaseLinksByCategory(book);
+
+    return res
+      .status(200)
+      .set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+      .json(
+        new ApiResponse(
+          200,
+          { allLinks: grouped },
+          "Purchase links fetched successfully",
+        ),
+      );
+  },
+);
+
