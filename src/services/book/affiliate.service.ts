@@ -3,7 +3,6 @@ import { IBook } from "../../types/book";
 interface AffiliateLink {
   name: string;
   url: string;
-  icon?: string;
   platform: string;
 }
 
@@ -70,10 +69,13 @@ class AffiliateService {
    * Get country-specific affiliate ID from environment variables
    * Falls back to default country (US) if specific country ID not found
    */
-  private getAffiliateId = (platform: string, country: CountryCode = "US"): string | undefined => {
+  private getAffiliateId = (
+    platform: string,
+    country: CountryCode = "US",
+  ): string | undefined => {
     const envKey = `${platform.toUpperCase()}_AFFILIATE_ID_${country}`;
     const defaultEnvKey = `${platform.toUpperCase()}_AFFILIATE_ID`;
-    
+
     return process.env[envKey] || process.env[defaultEnvKey];
   };
 
@@ -82,7 +84,10 @@ class AffiliateService {
    * Supports: Amazon, Kobo, Bookshop.org (US only), Project Gutenberg, Open Library
    * Country-aware: Generates country-specific URLs based on provided country code
    */
-  generatePurchaseLinks = (book: IBook, country: CountryCode = "US"): PurchaseLinks => {
+  generatePurchaseLinks = (
+    book: IBook,
+    country: CountryCode = "US",
+  ): PurchaseLinks => {
     const links: PurchaseLinks = {};
     const config = COUNTRY_CONFIGS[country];
     const searchQuery = encodeURIComponent(book.title);
@@ -94,7 +99,6 @@ class AffiliateService {
         name: "Amazon",
         platform: "amazon",
         url: `https://www.${config.amazonDomain}/s?k=${searchQuery}&tag=${amazonAffiliateId}`,
-        icon: "📕",
       };
     } else {
       // Fallback without affiliate tag
@@ -102,7 +106,6 @@ class AffiliateService {
         name: "Amazon",
         platform: "amazon",
         url: `https://www.${config.amazonDomain}/s?k=${searchQuery}`,
-        icon: "📕",
       };
     }
 
@@ -113,14 +116,12 @@ class AffiliateService {
         name: "Kobo",
         platform: "kobo",
         url: `https://www.kobo.com/${config.koboRegion}/search?query=${searchQuery}&affid=${koboAffiliateId}`,
-        icon: "📔",
       };
     } else {
       links.kobo = {
         name: "Kobo",
         platform: "kobo",
         url: `https://www.kobo.com/${config.koboRegion}/search?query=${searchQuery}`,
-        icon: "📔",
       };
     }
 
@@ -132,14 +133,12 @@ class AffiliateService {
           name: "Bookshop.org",
           platform: "bookshoporg",
           url: `https://bookshop.org/search?q=${searchQuery}&aff=${bookshopAffiliateId}`,
-          icon: "🏪",
         };
       } else {
         links.bookshoporg = {
           name: "Bookshop.org",
           platform: "bookshoporg",
           url: `https://bookshop.org/search?q=${searchQuery}`,
-          icon: "🏪",
         };
       }
     }
@@ -149,7 +148,6 @@ class AffiliateService {
       name: "Project Gutenberg",
       platform: "gutenberg",
       url: `https://www.gutenberg.org/ebooks/search/?query=${searchQuery}`,
-      icon: "📖",
     };
 
     // 5. OPEN LIBRARY (Free)
@@ -158,7 +156,6 @@ class AffiliateService {
         name: "Open Library",
         platform: "openlibrary",
         url: `https://openlibrary.org/works/${book.externalId}`,
-        icon: "🔓",
       };
     }
 
