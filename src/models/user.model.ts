@@ -38,17 +38,17 @@ const userSchema = new Schema<
     },
     bio: {
       type: String,
-      default: null
+      default: null,
     },
     avatarImage: {
       type: String,
-      default: null
+      default: null,
     },
     coverImage: {
       type: String,
-      default: null
+      default: null,
     },
-    
+
     // counters
     followersCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
@@ -85,7 +85,8 @@ userSchema.pre("save", async function () {
 });
 
 userSchema.methods.comparePassword = async function (password: string) {
-  if(!password || password.trim().length === 0) throw new ApiError(400, "Password cannot be empty");
+  if (!password || password.trim().length === 0)
+    throw new ApiError(400, "Password cannot be empty");
   try {
     return await bcrypt.compare(password, this.hashedPassword);
   } catch (err) {

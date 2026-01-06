@@ -23,7 +23,7 @@ const BlogSchema = new Schema<IBlog>(
     content: {
       type: String,
       required: true,
-      maxlength : 10000,
+      maxlength: 10000,
     },
     coverImage: {
       type: String, // Stores the URL (e.g., from Cloudinary/S3)
@@ -39,7 +39,7 @@ const BlogSchema = new Schema<IBlog>(
   },
   {
     timestamps: true, // Automatically manages createdAt (Timestamp) and updatedAt
-  }
+  },
 );
 
 // --- SEARCH INDEXES ---

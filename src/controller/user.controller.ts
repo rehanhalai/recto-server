@@ -56,17 +56,19 @@ export const signin = asyncHandler(async (req: Request, res: Response) => {
     );
 });
 
-export const logout = asyncHandler(async (req: CustomRequest, res: Response) => {
-  const userId = req.user?._id as string;
+export const logout = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const userId = req.user?._id as string;
 
-  await userServices.logOut(userId);
+    await userServices.logOut(userId);
 
-  return res
-    .clearCookie("refreshToken", options)
-    .clearCookie("accessToken", options)
-    .status(200)
-    .json(new ApiResponse(200, {}, "User logged out successfully"));
-});
+    return res
+      .clearCookie("refreshToken", options)
+      .clearCookie("accessToken", options)
+      .status(200)
+      .json(new ApiResponse(200, {}, "User logged out successfully"));
+  },
+);
 
 export const googleAuthRedirect = asyncHandler(
   async (_req: Request, res: Response) => {
