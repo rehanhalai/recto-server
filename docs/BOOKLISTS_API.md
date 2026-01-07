@@ -1,15 +1,19 @@
 # BookLists API Documentation
 
 ## Overview
+
 The BookLists feature allows authenticated users to create, manage, and organize custom book lists. Users can only perform operations on their own lists, ensuring proper authorization and privacy.
 
 ## Base URL
+
 ```
 /api/v1/lists
 ```
 
 ## Authentication
+
 Most endpoints require authentication using JWT tokens. Include the token in the `Authorization` header:
+
 ```
 Authorization: Bearer <your_token>
 ```
@@ -19,6 +23,7 @@ Authorization: Bearer <your_token>
 ## Endpoints
 
 ### 1. Create a List
+
 **POST** `/api/v1/lists/`
 
 Creates a new book list for the authenticated user.
@@ -26,6 +31,7 @@ Creates a new book list for the authenticated user.
 **Authentication Required:** Yes
 
 **Request Body:**
+
 ```json
 {
   "name": "2026 Reading Challenge",
@@ -35,6 +41,7 @@ Creates a new book list for the authenticated user.
 ```
 
 **Response (201):**
+
 ```json
 {
   "statusCode": 201,
@@ -57,6 +64,7 @@ Creates a new book list for the authenticated user.
 ---
 
 ### 2. Get User's Lists
+
 **GET** `/api/v1/lists/user/my-lists`
 
 Retrieves all lists created by the authenticated user.
@@ -64,6 +72,7 @@ Retrieves all lists created by the authenticated user.
 **Authentication Required:** Yes
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -88,6 +97,7 @@ Retrieves all lists created by the authenticated user.
 ---
 
 ### 3. Get a Single List
+
 **GET** `/api/v1/lists/:listId`
 
 Retrieves a specific list by ID. Public lists can be viewed by anyone, private lists only by the owner.
@@ -95,9 +105,11 @@ Retrieves a specific list by ID. Public lists can be viewed by anyone, private l
 **Authentication Required:** Optional (required for private lists)
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -128,6 +140,7 @@ Retrieves a specific list by ID. Public lists can be viewed by anyone, private l
 ---
 
 ### 4. Update a List
+
 **PATCH** `/api/v1/lists/:listId`
 
 Updates an existing list. Only the list owner can update their lists.
@@ -135,9 +148,11 @@ Updates an existing list. Only the list owner can update their lists.
 **Authentication Required:** Yes
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 
 **Request Body:**
+
 ```json
 {
   "name": "Updated List Name",
@@ -145,9 +160,11 @@ Updates an existing list. Only the list owner can update their lists.
   "is_public": false
 }
 ```
-*Note: All fields are optional*
+
+_Note: All fields are optional_
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -170,6 +187,7 @@ Updates an existing list. Only the list owner can update their lists.
 ---
 
 ### 5. Delete a List
+
 **DELETE** `/api/v1/lists/:listId`
 
 Deletes a list. Only the list owner can delete their lists.
@@ -177,9 +195,11 @@ Deletes a list. Only the list owner can delete their lists.
 **Authentication Required:** Yes
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -194,6 +214,7 @@ Deletes a list. Only the list owner can delete their lists.
 ---
 
 ### 6. Add a Book to a List
+
 **POST** `/api/v1/lists/:listId/books`
 
 Adds a book to a specific list. Only the list owner can add books.
@@ -201,18 +222,21 @@ Adds a book to a specific list. Only the list owner can add books.
 **Authentication Required:** Yes
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 
 **Request Body:**
+
 ```json
 {
   "book_id": "b1"
 }
 ```
 
-*Note: Title and author are auto-fetched from the stored book record.*
+_Note: Title and author are auto-fetched from the stored book record._
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -240,6 +264,7 @@ Adds a book to a specific list. Only the list owner can add books.
 ---
 
 ### 7. Remove a Book from a List
+
 **DELETE** `/api/v1/lists/:listId/books/:bookId`
 
 Removes a book from a list. Only the list owner can remove books.
@@ -247,10 +272,12 @@ Removes a book from a list. Only the list owner can remove books.
 **Authentication Required:** Yes
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 - `bookId` (string) - The ID of the book to remove
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -270,6 +297,7 @@ Removes a book from a list. Only the list owner can remove books.
 ---
 
 ### 8. Reorder Books in a List
+
 **PATCH** `/api/v1/lists/:listId/reorder`
 
 Reorders books within a list. Only the list owner can reorder books.
@@ -277,17 +305,21 @@ Reorders books within a list. Only the list owner can reorder books.
 **Authentication Required:** Yes
 
 **URL Parameters:**
+
 - `listId` (string) - The ID of the list
 
 **Request Body:**
+
 ```json
 {
   "bookIds": ["b2", "b1", "b3"]
 }
 ```
-*Note: Must include ALL book IDs from the list in the desired order*
+
+_Note: Must include ALL book IDs from the list in the desired order_
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -322,6 +354,7 @@ Reorders books within a list. Only the list owner can reorder books.
 ---
 
 ### 9. Get Public Lists
+
 **GET** `/api/v1/lists/public`
 
 Retrieves all public lists for discovery. Includes pagination.
@@ -329,12 +362,14 @@ Retrieves all public lists for discovery. Includes pagination.
 **Authentication Required:** No
 
 **Query Parameters:**
+
 - `limit` (number, optional) - Number of lists to return (default: 20)
 - `skip` (number, optional) - Number of lists to skip (default: 0)
 
 **Example:** `/api/v1/lists/public?limit=10&skip=0`
 
 **Response (200):**
+
 ```json
 {
   "statusCode": 200,
@@ -366,6 +401,7 @@ Retrieves all public lists for discovery. Includes pagination.
 ## Error Responses
 
 ### 400 Bad Request
+
 ```json
 {
   "statusCode": 400,
@@ -375,6 +411,7 @@ Retrieves all public lists for discovery. Includes pagination.
 ```
 
 ### 401 Unauthorized
+
 ```json
 {
   "statusCode": 401,
@@ -384,6 +421,7 @@ Retrieves all public lists for discovery. Includes pagination.
 ```
 
 ### 403 Forbidden
+
 ```json
 {
   "statusCode": 403,
@@ -393,6 +431,7 @@ Retrieves all public lists for discovery. Includes pagination.
 ```
 
 ### 404 Not Found
+
 ```json
 {
   "statusCode": 404,
@@ -419,6 +458,7 @@ Retrieves all public lists for discovery. Includes pagination.
 ## Data Model
 
 ### BookList Schema
+
 ```typescript
 {
   _id: ObjectId,

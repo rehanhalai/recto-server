@@ -157,9 +157,10 @@ class ListService {
     const newItem: IBookListItem = {
       book_id: new mongoose.Types.ObjectId(bookData.book_id),
       title: book.title,
-      author: Array.isArray(book.authors) && book.authors.length > 0
-        ? (book.authors[0] as string)
-        : "Unknown author",
+      author:
+        Array.isArray(book.authors) && book.authors.length > 0
+          ? (book.authors[0] as string)
+          : "Unknown author",
       added_at: new Date(),
       position: newPosition,
     };

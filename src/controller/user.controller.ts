@@ -72,7 +72,14 @@ export const logout = asyncHandler(
 
 export const googleAuthRedirect = asyncHandler(
   async (_req: Request, res: Response) => {
-    const url = await googleAuth.Redirect();
+    const { url, state } = await googleAuth.Redirect();
+    // store state in httpOnly cookie for CSRF protection
+    res.cookie("oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60 * 1000, // 10 minutes
+    });
     return res.redirect(url);
   },
 );
@@ -81,21 +88,36 @@ export const googleAuthCallback = asyncHandler(
   async (req: Request, res: Response) => {
     // ACTION 1: Extract the "code" from the URL parameters
     // Google sends the user back to: /google/callback?code=abc12345...
-    const { code } = req.query as { code: string };
+    const { code, state } = req.query as { code: string; state?: string };
+
+    // Verify state to prevent CSRF
+    const stateCookie = req.cookies?.oauth_state as string | undefined;
+    if (!state || !stateCookie || state !== stateCookie) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, {}, "Invalid OAuth state"));
+    }
 
     const { refreshToken: newRefreshToken, accessToken } =
       await googleAuth.CallBack(code);
+
+    // clear state cookie after successful validation
+    res.clearCookie("oauth_state", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
 
     return res
       .status(200)
       .cookie("refreshToken", newRefreshToken, options)
       .cookie("accessToken", accessToken, options)
-      .redirect(process.env.CLIENT_URL_LOCAL || "http://localhost:5173/home");
-    // .json({
-    //   message: "Success",
-    //   accessToken,
-    //   newRefreshToken,
-    // })
+      // .redirect(process.env.CLIENT_URL!);
+    .json({
+      message: "Success",
+      accessToken,
+      newRefreshToken,
+    })
   },
 );
 
