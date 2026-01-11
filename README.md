@@ -186,81 +186,83 @@ All routes are mounted under `/api/v1` (see [src/app.ts](src/app.ts)). Tables be
 
 ### Users — `/api/v1/user` ([src/routes/user.route.ts](src/routes/user.route.ts))
 
-| Method | Path                   | Auth      | Description                                 |
-| ------ | ---------------------- | --------- | ------------------------------------------- |
-| POST   | /signup                | Public    | Start email signup (OTP).                   |
-| POST   | /signup-verify         | Public    | Verify OTP and create user.                 |
-| POST   | /signin                | Public    | Login; sets httpOnly access/refresh tokens. |
-| POST   | /refresh-accesstoken   | Public    | Issue new access/refresh tokens.            |
-| GET    | /google                | Public    | Redirect to Google OAuth.                   |
-| GET    | /google/callback       | Public    | Google OAuth callback.                      |
-| POST   | /password-otp          | Public    | Request password reset OTP.                 |
-| POST   | /password-otp-verify   | Public    | Verify password-reset OTP.                  |
-| POST   | /new-password          | Public    | Set new password after OTP verification.    |
-| GET    | /check?userName=...    | Public    | Check username availability.                 |
-| POST   | /change-password       | VerifyJWT | Change password with current password.      |
-| POST   | /logout                | VerifyJWT | Clear refresh and access tokens.            |
-| PATCH  | /update-profile        | VerifyJWT | Update profile: `fullName`, `bio`, `userName`. |
-| PATCH  | /update-email          | VerifyJWT | Placeholder (501) for email change.         |
-| PATCH  | /update-profileimage   | VerifyJWT | Upload avatar/cover via Multer + Cloudinary.|
-| GET    | /whoami                | VerifyJWT | Current user details.                        |
+| Method | Path                 | Auth      | Description                                    |
+| ------ | -------------------- | --------- | ---------------------------------------------- |
+| POST   | /signup              | Public    | Start email signup (OTP).                      |
+| POST   | /signup-verify       | Public    | Verify OTP and create user.                    |
+| POST   | /signin              | Public    | Login; sets httpOnly access/refresh tokens.    |
+| POST   | /refresh-accesstoken | Public    | Issue new access/refresh tokens.               |
+| GET    | /google              | Public    | Redirect to Google OAuth.                      |
+| GET    | /google/callback     | Public    | Google OAuth callback.                         |
+| POST   | /password-otp        | Public    | Request password reset OTP.                    |
+| POST   | /password-otp-verify | Public    | Verify password-reset OTP.                     |
+| POST   | /new-password        | Public    | Set new password after OTP verification.       |
+| GET    | /check?userName=...  | Public    | Check username availability.                   |
+| POST   | /change-password     | VerifyJWT | Change password with current password.         |
+| POST   | /logout              | VerifyJWT | Clear refresh and access tokens.               |
+| PATCH  | /update-profile      | VerifyJWT | Update profile: `fullName`, `bio`, `userName`. |
+| PATCH  | /update-email        | VerifyJWT | Placeholder (501) for email change.            |
+| PATCH  | /update-profileimage | VerifyJWT | Upload avatar/cover via Multer + Cloudinary.   |
+| GET    | /whoami              | VerifyJWT | Current user details.                          |
 
 ### Search — `/api/v1/search` ([src/routes/search.route.ts](src/routes/search.route.ts))
 
-| Method | Path    | Auth   | Description                       |
-| ------ | ------- | ------ | --------------------------------- |
-| GET    | /users  | Public | Search users.                     |
-| GET    | /user   | Public | Get specific user by id/handle.   |
+| Method | Path   | Auth   | Description                     |
+| ------ | ------ | ------ | ------------------------------- |
+| GET    | /users | Public | Search users.                   |
+| GET    | /user  | Public | Get specific user by id/handle. |
 
 ### Books — `/api/v1/books` ([src/routes/book.route.ts](src/routes/book.route.ts))
 
-| Method | Path                        | Auth      | Description                                 |
-| ------ | --------------------------- | --------- | ------------------------------------------- |
-| POST   | /getbook                    | Public    | Fetch book via OpenLibrary query.           |
-| GET    | /purchase-links/:bookId     | Public    | Retrieve affiliate purchase links.          |
-| POST   | /tbrbook                    | VerifyJWT | Add book to TBR/status.                     |
-| DELETE | /tbrbook/:tbrId             | VerifyJWT | Remove from TBR.                            |
-| GET    | /fetch-user-books           | VerifyJWT | List user books by status.                  |
-| POST   | /reviews/add                | VerifyJWT | Add review for a book.                      |
-| GET    | /reviews/:bookId            | Public    | Get all reviews for a book.                 |
-| PATCH  | /reviews/:reviewId          | VerifyJWT | Update review.                              |
-| DELETE | /reviews/:reviewId          | VerifyJWT | Remove review.                              |
+| Method | Path                    | Auth      | Description                            |
+| ------ | ----------------------- | --------- | -------------------------------------- |
+| POST   | /getbook                | Public    | Fetch book via OpenLibrary query.      |
+| GET    | /purchase-links/:bookId | Public    | Retrieve affiliate purchase links.     |
+| GET    | /search                 | Public    | Search books by title with pagination  |
+| GET    | /search/author          | Public    | Search books by author with pagination |
+| POST   | /tbrbook                | VerifyJWT | Add book to TBR/status.                |
+| DELETE | /tbrbook/:tbrId         | VerifyJWT | Remove from TBR.                       |
+| GET    | /fetch-user-books       | VerifyJWT | List user books by status.             |
+| POST   | /reviews/add            | VerifyJWT | Add review for a book.                 |
+| GET    | /reviews/:bookId        | Public    | Get all reviews for a book.            |
+| PATCH  | /reviews/:reviewId      | VerifyJWT | Update review.                         |
+| DELETE | /reviews/:reviewId      | VerifyJWT | Remove review.                         |
 
 ### Lists — `/api/v1/lists` ([src/routes/list.route.ts](src/routes/list.route.ts))
 
-| Method | Path                     | Auth      | Description                         |
-| ------ | ------------------------ | --------- | ----------------------------------- |
-| GET    | /public                  | Public    | Fetch public lists.                 |
-| GET    | /:listId                 | Public    | Get a single list (public).         |
-| POST   | /                        | VerifyJWT | Create a list.                      |
-| GET    | /user/my-lists           | VerifyJWT | Get my lists.                       |
-| PATCH  | /:listId                 | VerifyJWT | Update a list.                      |
-| DELETE | /:listId                 | VerifyJWT | Delete a list.                      |
-| POST   | /:listId/books           | VerifyJWT | Add a book to a list.               |
-| DELETE | /:listId/books/:bookId   | VerifyJWT | Remove a book from a list.          |
-| PATCH  | /:listId/reorder         | VerifyJWT | Reorder books in a list.            |
+| Method | Path                   | Auth      | Description                 |
+| ------ | ---------------------- | --------- | --------------------------- |
+| GET    | /public                | Public    | Fetch public lists.         |
+| GET    | /:listId               | Public    | Get a single list (public). |
+| POST   | /                      | VerifyJWT | Create a list.              |
+| GET    | /user/my-lists         | VerifyJWT | Get my lists.               |
+| PATCH  | /:listId               | VerifyJWT | Update a list.              |
+| DELETE | /:listId               | VerifyJWT | Delete a list.              |
+| POST   | /:listId/books         | VerifyJWT | Add a book to a list.       |
+| DELETE | /:listId/books/:bookId | VerifyJWT | Remove a book from a list.  |
+| PATCH  | /:listId/reorder       | VerifyJWT | Reorder books in a list.    |
 
 ### Connections — `/api/v1/connection` ([src/routes/connection.route.ts](src/routes/connection.route.ts))
 
-| Method | Path               | Auth      | Description                                 |
-| ------ | ------------------ | --------- | ------------------------------------------- |
-| GET    | /followers         | Public    | Followers of a user (by query).             |
-| GET    | /following         | Public    | Following of a user (by query).             |
-| POST   | /follow/:userId    | VerifyJWT | Follow a user.                              |
-| DELETE | /unfollow/:userId  | VerifyJWT | Unfollow a user.                            |
-| GET    | /myfollowers       | VerifyJWT | My followers.                               |
-| GET    | /myfollowings      | VerifyJWT | My followings.                              |
+| Method | Path              | Auth      | Description                     |
+| ------ | ----------------- | --------- | ------------------------------- |
+| GET    | /followers        | Public    | Followers of a user (by query). |
+| GET    | /following        | Public    | Following of a user (by query). |
+| POST   | /follow/:userId   | VerifyJWT | Follow a user.                  |
+| DELETE | /unfollow/:userId | VerifyJWT | Unfollow a user.                |
+| GET    | /myfollowers      | VerifyJWT | My followers.                   |
+| GET    | /myfollowings     | VerifyJWT | My followings.                  |
 
 ### Blogs — `/api/v1/blogs` ([src/routes/blog.route.ts](src/routes/blog.route.ts))
 
-| Method | Path         | Auth      | Description         |
-| ------ | ------------ | --------- | ------------------- |
-| GET    | /            | Public    | List blogs.         |
-| GET    | /:slug       | Public    | Blog by slug.       |
-| POST   | /            | VerifyJWT | Create blog.        |
-| GET    | /user/my-blogs| VerifyJWT | My blogs.           |
-| PATCH  | /:id         | VerifyJWT | Update blog.        |
-| DELETE | /:id         | VerifyJWT | Delete blog.        |
+| Method | Path           | Auth      | Description   |
+| ------ | -------------- | --------- | ------------- |
+| GET    | /              | Public    | List blogs.   |
+| GET    | /:slug         | Public    | Blog by slug. |
+| POST   | /              | VerifyJWT | Create blog.  |
+| GET    | /user/my-blogs | VerifyJWT | My blogs.     |
+| PATCH  | /:id           | VerifyJWT | Update blog.  |
+| DELETE | /:id           | VerifyJWT | Delete blog.  |
 
 ---
 
@@ -346,11 +348,8 @@ curl -X POST \
 - Author: Rehan Halai
 - License: ISC (see `package.json`)
 
-
-
 <img width="3369" height="8192" alt="ReqLifeCycle" src="https://github.com/user-attachments/assets/c8170978-9399-40eb-b7f5-97bb72800666" />
 <img width="8192" height="5010" alt="featFlow" src="https://github.com/user-attachments/assets/a787e4fb-c177-4f69-a860-c3b0612d6cb9" />
 <img width="8192" height="2910" alt="ERDdataSchema" src="https://github.com/user-attachments/assets/58e64081-6a70-4f05-bc15-88919bac9263" />
 <img width="8192" height="6754" alt="backendArchitecture" src="https://github.com/user-attachments/assets/db7398cc-9512-4dd8-b5ca-90b1db663598" />
 <img width="5097" height="8192" alt="authFlow" src="https://github.com/user-attachments/assets/dd5f77df-badd-4b2e-884e-b2b4dab16807" />
-
