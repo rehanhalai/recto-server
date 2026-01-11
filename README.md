@@ -345,3 +345,12 @@ curl -X POST \
 
 - Author: Rehan Halai
 - License: ISC (see `package.json`)
+
+
+
+<img width="3369" height="8192" alt="ReqLifeCycle" src="https://github.com/user-attachments/assets/c8170978-9399-40eb-b7f5-97bb72800666" />
+<img width="8192" height="5010" alt="featFlow" src="https://github.com/user-attachments/assets/a787e4fb-c177-4f69-a860-c3b0612d6cb9" />
+<img width="8192" height="2910" alt="ERDdataSchema" src="https://github.com/user-attachments/assets/58e64081-6a70-4f05-bc15-88919bac9263" />
+<img width="8192" height="6754" alt="backendArchitecture" src="https://github.com/user-attachments/assets/db7398cc-9512-4dd8-b5ca-90b1db663598" />
+<img width="5097" height="8192" alt="authFlow" src="https://github.com/user-attachments/assets/dd5f77df-badd-4b2e-884e-b2b4dab16807" />
+
