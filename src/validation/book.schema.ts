@@ -1,7 +1,7 @@
 import z from "zod";
 
 class BookValidationSchema {
-  createBook = z
+  getBook = z
     .object({
       body: z
         .object({
@@ -44,6 +44,64 @@ class BookValidationSchema {
     .object({
       params: z.object({
         bookId: z.string({ message: "bookId is required" }),
+      }),
+    })
+    .strict();
+
+  searchBooks = z
+    .object({
+      query: z.object({
+        title: z
+          .string({
+            message: "Title is required for search",
+          })
+          .min(2, "Title must be at least 2 characters")
+          .max(200, "Title must not exceed 200 characters")
+          .trim(),
+        page: z
+          .string()
+          .optional()
+          .default("1")
+          .transform((val) => parseInt(val, 10))
+          .refine((val) => val > 0, "Page must be greater than 0"),
+        limit: z
+          .string()
+          .optional()
+          .default("10")
+          .transform((val) => parseInt(val, 10))
+          .refine(
+            (val) => val > 0 && val <= 50,
+            "Limit must be between 1 and 50",
+          ),
+      }),
+    })
+    .strict();
+
+  searchBooksByAuthor = z
+    .object({
+      query: z.object({
+        author: z
+          .string({
+            message: "Author name is required for search",
+          })
+          .min(2, "Author name must be at least 2 characters")
+          .max(200, "Author name must not exceed 200 characters")
+          .trim(),
+        page: z
+          .string()
+          .optional()
+          .default("1")
+          .transform((val) => parseInt(val, 10))
+          .refine((val) => val > 0, "Page must be greater than 0"),
+        limit: z
+          .string()
+          .optional()
+          .default("10")
+          .transform((val) => parseInt(val, 10))
+          .refine(
+            (val) => val > 0 && val <= 50,
+            "Limit must be between 1 and 50",
+          ),
       }),
     })
     .strict();

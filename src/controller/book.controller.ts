@@ -6,12 +6,13 @@ import { CustomRequest } from "../types/customRequest";
 import { ValidatedRequest } from "../types/typedRequest";
 import { bookServices } from "../services/book/book.service";
 import { affiliateService } from "../services/book/affiliate.service";
+import bookSearchService from "../services/book/book.search.service";
 import Book from "../models/books.model";
 import BookValidationSchema from "../validation/book.schema";
 
 export const getBookController = asyncHandler(
   async (
-    req: ValidatedRequest<typeof BookValidationSchema.createBook>,
+    req: ValidatedRequest<typeof BookValidationSchema.getBook>,
     res: Response,
   ) => {
     const { externalId, title, authors } = req.body;
@@ -112,6 +113,64 @@ export const getPurchaseLinksController = asyncHandler(
           200,
           { allLinks: grouped },
           "Purchase links fetched successfully",
+        ),
+      );
+  },
+);
+
+export const searchBooksController = asyncHandler(
+  async (
+    req: ValidatedRequest<typeof BookValidationSchema.searchBooks>,
+    res: Response,
+  ) => {
+    const { title, page, limit } = req.query as {
+      title: string;
+      page: number;
+      limit: number;
+    };
+
+    const result = await bookSearchService.searchBooksByTitle(
+      title,
+      page,
+      limit,
+    );
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          `Found ${result.books.length} books matching "${title}"`,
+        ),
+      );
+  },
+);
+
+export const searchBooksByAuthorController = asyncHandler(
+  async (
+    req: ValidatedRequest<typeof BookValidationSchema.searchBooksByAuthor>,
+    res: Response,
+  ) => {
+    const { author, page, limit } = req.query as {
+      author: string;
+      page: number;
+      limit: number;
+    };
+
+    const result = await bookSearchService.searchBooksByAuthor(
+      author,
+      page,
+      limit,
+    );
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          result,
+          `Found ${result.books.length} books by author "${author}"`,
         ),
       );
   },

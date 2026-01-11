@@ -8,6 +8,8 @@ import {
   removeTbrBookController,
   fetchBooksBasedOnStatus,
   getPurchaseLinksController,
+  searchBooksController,
+  searchBooksByAuthorController,
 } from "../controller/book.controller";
 import {
   addReview,
@@ -23,11 +25,7 @@ const router = Router();
 // for all users (without the JWT token)
 router
   .route("/getbook")
-  .post(
-    apiLimiter,
-    validate(BookValidationSchema.createBook),
-    getBookController,
-  );
+  .post(apiLimiter, validate(BookValidationSchema.getBook), getBookController);
 
 // Purchase links endpoint (public access)
 router
@@ -36,6 +34,24 @@ router
     apiLimiter,
     validate(BookValidationSchema.getPurchaseLinks),
     getPurchaseLinksController,
+  );
+
+// Search books endpoint (public access)
+router
+  .route("/search")
+  .get(
+    apiLimiter,
+    validate(BookValidationSchema.searchBooks),
+    searchBooksController,
+  );
+
+// Search books by author endpoint (public access)
+router
+  .route("/search/author")
+  .get(
+    apiLimiter,
+    validate(BookValidationSchema.searchBooksByAuthor),
+    searchBooksByAuthorController,
   );
 
 // Protected Routes

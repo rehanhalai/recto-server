@@ -1,25 +1,8 @@
-import axios from "axios";
-import https from "https";
 import Book from "../../models/books.model";
 import { OpenLibraryFactory } from "../../utils/OpenLibraryDataCleaner";
 import ApiError from "../../utils/ApiError";
 import { IBook } from "../../types/book";
-
-// Optimized HTTP client with connection pooling
-const openLibClient = axios.create({
-  baseURL: "https://openlibrary.org",
-  httpsAgent: new https.Agent({
-    keepAlive: true,
-    maxSockets: 50, // Increased connection pool
-    maxFreeSockets: 10,
-    timeout: 60000,
-    keepAliveMsecs: 30000,
-  }),
-  headers: {
-    "User-Agent": "Recto 1.0 (recto.help@gmail.com)",
-  },
-  timeout: 3000, // Reduced timeout for faster failures
-});
+import { openLibraryClient } from "../../clients/openLibrary.client";
 
 class BookQueryService {
   /**
@@ -86,18 +69,15 @@ class BookQueryService {
 
     if (shouldFetch) {
       try {
-        const response = await openLibClient.get(`/works/${externalId}.json`);
-        apiData = response.data;
+        apiData = await openLibraryClient.getWork(externalId);
         enrichmentNeeded = true;
       } catch (error: any) {
         // API call failed - return existing book if available
         if (targetBook) {
           return targetBook;
         }
-        if (error.response?.status === 404) {
-          throw new ApiError(404, "Book not found in Open Library");
-        }
-        throw new ApiError(500, "Failed to fetch from Open Library");
+        // Error handling is done in the client
+        throw error;
       }
     }
 
@@ -385,7 +365,7 @@ class BookQueryService {
     if (existing?.isbn13) return;
 
     const attemptFetch = async () => {
-      const response = await openLibClient.get(
+      const response = await openLibraryClient.get(
         `/works/${workId}/editions.json`,
         {
           params: { limit: 5 },
