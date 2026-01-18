@@ -5,8 +5,8 @@ import { IOTP, IOTPMethods } from "../models/otp.model";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: 465,
-  secure: true, // true for 465, false for other ports
+  port: 2525,
+  secure: false,
   auth: {
     user: process.env.NODEMAILER_EMAIL,
     pass: process.env.NODEMAILER_PASS,
