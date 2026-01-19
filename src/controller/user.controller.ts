@@ -11,6 +11,10 @@ import ApiError from "../utils/ApiError";
 const options = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
+  sameSite: "none" as const, // Required for cross-origin cookies
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/",
+  domain: process.env.COOKIE_DOMAIN, // e.g., ".yourdomain.com"
 };
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
