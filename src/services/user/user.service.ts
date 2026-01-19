@@ -18,7 +18,9 @@ class UserServices {
 
     const normalizedUserName = userName.trim().toLowerCase();
     validateUsername(normalizedUserName);
-    const existingUserName = await User.findOne({ userName: normalizedUserName });
+    const existingUserName = await User.findOne({
+      userName: normalizedUserName,
+    });
     if (existingUserName) throw new ApiError(400, "Username already exists");
 
     const { saveOTP: otpDoc } = await sendOTPforVerification(
@@ -49,9 +51,12 @@ class UserServices {
 
     // Clean up the OTP document after successful user creation
     await OTPModel.findByIdAndDelete(pendingOTP._id);
+
+    const { accessToken, refreshToken } =
+      await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
     const userResponse = user.toObject();
-    const { hashedPassword, refreshToken, ...userData } = userResponse;
-    return userData;
+    const { hashedPassword, ...userData } = userResponse;
+    return { accessToken, refreshToken, userData };
   };
 
   signIn = async (email: string, password: string) => {
@@ -68,7 +73,7 @@ class UserServices {
       await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
 
     const UserObject = user.toObject();
-    const { hashedPassword: _, refreshToken: __, ...userResponse } = UserObject;
+    const { hashedPassword, ...userResponse } = UserObject;
     return { ...userResponse, accessToken, refreshToken };
   };
 
