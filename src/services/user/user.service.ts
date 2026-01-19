@@ -66,7 +66,7 @@ class UserServices {
 
   signIn = async (email: string, password: string) => {
     const user = (await User.findOne({ email }).select(
-      "+hashedPassword +refreshToken -createdAt -followersCount -followingCount -googleId -postsCount -role -bio",
+      "+hashedPassword +refreshToken -createdAt -updatedAt -__v -followersCount -followingCount -googleId -postsCount -role -bio",
     )) as unknown as IUser & IUserMethods;
     if (!user) throw new ApiError(404, "User not found");
 
@@ -78,7 +78,7 @@ class UserServices {
       await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
 
     const UserObject = user.toObject();
-    const { hashedPassword, ...userResponse } = UserObject;
+    const { hashedPassword, _id, ...userResponse } = UserObject;
     return { ...userResponse, accessToken, refreshToken };
   };
 
