@@ -38,7 +38,7 @@ class UserServices {
     const { pendingOTP } = await verifyOTPcode(email, otp);
 
     // use insertMany to BYPASS the pre('save') hook so we don't double-hash.
-    const [user] = await User.insertMany([
+    const [insertedUser] = await User.insertMany([
       {
         email,
         userName: pendingOTP.userName,
@@ -47,21 +47,26 @@ class UserServices {
       },
     ]);
 
-    if (!user) throw new ApiError(500, "Error while updating user");
+    if (!insertedUser) throw new ApiError(500, "Error while updating user");
 
     // Clean up the OTP document after successful user creation
     await OTPModel.findByIdAndDelete(pendingOTP._id);
 
+    const user = await User.findById(insertedUser._id)
+      .select(
+        "-hashedPassword -refreshToken -createdAt -followersCount -followingCount -googleId -postsCount -role -bio",
+      )
+      .lean();
+    if (!user) throw new ApiError(500, "Error while fetching user data");
+
     const { accessToken, refreshToken } =
       await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
-    const userResponse = user.toObject();
-    const { hashedPassword, ...userData } = userResponse;
-    return { accessToken, refreshToken, userData };
+    return { accessToken, refreshToken, userData: user };
   };
 
   signIn = async (email: string, password: string) => {
     const user = (await User.findOne({ email }).select(
-      "+hashedPassword +refreshToken",
+      "+hashedPassword +refreshToken -createdAt -followersCount -followingCount -googleId -postsCount -role -bio",
     )) as unknown as IUser & IUserMethods;
     if (!user) throw new ApiError(404, "User not found");
 
