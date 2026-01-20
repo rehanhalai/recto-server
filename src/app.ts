@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { globalLimiter } from "./middlewares/rateLimiter.middleware";
+// import { globalLimiter } from "./middlewares/rateLimiter.middleware";
 
 const app = express();
 
@@ -13,7 +13,7 @@ app.use(
 );
 
 // Apply global rate limiter to all endpoints
-app.use(globalLimiter);
+// app.use(globalLimiter);    comented for testing purposes
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
