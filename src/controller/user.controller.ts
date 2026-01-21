@@ -33,9 +33,12 @@ export const VerifyOTPSaveUser = asyncHandler(
     res
       .status(200)
       .cookie("refreshToken", refreshToken, options)
-      .cookie("accessToken", accessToken, options)
       .json(
-        new ApiResponse(200, { user: userData }, "User verified successfully"),
+        new ApiResponse(
+          200,
+          { user: userData, accessToken },
+          "User verified successfully",
+        ),
       );
   },
 );
@@ -51,8 +54,13 @@ export const signin = asyncHandler(async (req: Request, res: Response) => {
   return res
     .status(200)
     .cookie("refreshToken", refreshToken, options)
-    .cookie("accessToken", accessToken, options)
-    .json(new ApiResponse(200, { user }, "User logged in successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { user, accessToken },
+        "User logged in successfully",
+      ),
+    );
 });
 
 export const logout = asyncHandler(
@@ -111,7 +119,7 @@ export const googleAuthCallback = asyncHandler(
       .status(200)
       .cookie("refreshToken", newRefreshToken, options)
       .cookie("accessToken", accessToken, options)
-      .redirect(process.env.CLIENT_URL!);
+      .redirect(`${process.env.CLIENT_URL}/google-callback`);
     // .json({
     //   message: "Success",
     //   accessToken,
