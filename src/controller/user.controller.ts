@@ -8,29 +8,6 @@ import { jwtServices } from "../services/user/JWT.service";
 import { googleAuth } from "../services/user/googleAuth.service";
 import ApiError from "../utils/ApiError";
 
-const isProd = process.env.NODE_ENV === "production";
-
-// Refresh token: httpOnly, long-lived
-const refreshTokenCookieOptions = {
-  httpOnly: true,
-  secure: isProd, // must be true when sameSite is "none"
-  sameSite: isProd ? ("none" as const) : ("lax" as const),
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  path: "/",
-  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
-};
-
-// Access token: readable by JS so the SPA can move it to localStorage
-// Short-lived to reduce risk (15 minutes)
-const accessTokenCookieOptions = {
-  httpOnly: false,
-  secure: isProd,
-  sameSite: isProd ? ("none" as const) : ("lax" as const),
-  maxAge: 15 * 60 * 1000, // 15 minutes
-  path: "/",
-  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
-};
-
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { email, userName, password } = req.body;
   const OTPresponse = await userServices.signUp(email, userName, password);
@@ -46,10 +23,12 @@ export const VerifyOTPSaveUser = asyncHandler(
       await userServices.VerifyOTPandSignUp(email, otp);
     res
       .status(200)
-      .cookie("refreshToken", refreshToken, refreshTokenCookieOptions)
-      .cookie("accessToken", accessToken, accessTokenCookieOptions)
       .json(
-        new ApiResponse(200, { user: userData }, "User verified successfully"),
+        new ApiResponse(
+          200,
+          { user: userData, accessToken, refreshToken },
+          "User verified successfully",
+        ),
       );
   },
 );
@@ -64,9 +43,13 @@ export const signin = asyncHandler(async (req: Request, res: Response) => {
 
   return res
     .status(200)
-    .cookie("refreshToken", refreshToken, refreshTokenCookieOptions)
-    .cookie("accessToken", accessToken, accessTokenCookieOptions)
-    .json(new ApiResponse(200, { user }, "User logged in successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { user, accessToken, refreshToken },
+        "User logged in successfully",
+      ),
+    );
 });
 
 export const logout = asyncHandler(
@@ -76,8 +59,6 @@ export const logout = asyncHandler(
     await userServices.logOut(userId);
 
     return res
-      .clearCookie("refreshToken", refreshTokenCookieOptions)
-      .clearCookie("accessToken", accessTokenCookieOptions)
       .status(200)
       .json(new ApiResponse(200, {}, "User logged out successfully"));
   },
@@ -121,16 +102,9 @@ export const googleAuthCallback = asyncHandler(
       sameSite: "lax",
     });
 
-    return res
-      .status(200)
-      .cookie("refreshToken", newRefreshToken, refreshTokenCookieOptions)
-      .cookie("accessToken", accessToken, accessTokenCookieOptions)
-      .redirect(`${process.env.CLIENT_URL}/google-callback`);
-    // .json({
-    //   message: "Success",
-    //   accessToken,
-    //   newRefreshToken,
-    // })
+    // Redirect to callback page with tokens as query params
+    const redirectUrl = `${process.env.CLIENT_URL}/google-callback?accessToken=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(newRefreshToken)}`;
+    return res.redirect(redirectUrl);
   },
 );
 
@@ -144,9 +118,13 @@ export const refreshAccessToken = asyncHandler(
 
     return res
       .status(200)
-      .cookie("refreshToken", newRefreshToken, refreshTokenCookieOptions)
-      .cookie("accessToken", accessToken, accessTokenCookieOptions)
-      .json(new ApiResponse(200, {}, "Access token refreshed successfully"));
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed successfully",
+        ),
+      );
   },
 );
 
