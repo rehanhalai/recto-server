@@ -21,14 +21,27 @@ export const VerifyOTPSaveUser = asyncHandler(
     const { email, otp } = req.body;
     const { accessToken, refreshToken, userData } =
       await userServices.VerifyOTPandSignUp(email, otp);
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax", // or 'strict' if feasible
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     res
       .status(200)
       .json(
-        new ApiResponse(
-          200,
-          { user: userData, accessToken, refreshToken },
-          "User verified successfully",
-        ),
+        new ApiResponse(200, { user: userData }, "User verified successfully"),
       );
   },
 );
@@ -41,15 +54,25 @@ export const signin = asyncHandler(async (req: Request, res: Response) => {
     password,
   );
 
+  const isProduction = process.env.NODE_ENV === "production";
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
   return res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { user, accessToken, refreshToken },
-        "User logged in successfully",
-      ),
-    );
+    .json(new ApiResponse(200, { user }, "User logged in successfully"));
 });
 
 export const logout = asyncHandler(
@@ -57,6 +80,19 @@ export const logout = asyncHandler(
     const userId = req.user?._id as string;
 
     await userServices.logOut(userId);
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    });
 
     return res
       .status(200)
@@ -102,8 +138,24 @@ export const googleAuthCallback = asyncHandler(
       sameSite: "lax",
     });
 
-    // Redirect to callback page with tokens as query params
-    const redirectUrl = `${process.env.CLIENT_URL}/google-callback?accessToken=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(newRefreshToken)}`;
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Redirect to callback page without tokens in URL
+    const redirectUrl = `${process.env.CLIENT_URL}/google-callback`;
     return res.redirect(redirectUrl);
   },
 );
@@ -116,15 +168,27 @@ export const refreshAccessToken = asyncHandler(
     const { refreshToken: newRefreshToken, accessToken } =
       await jwtServices.refreshAccessToken(incomingRefreshToken);
 
+    const isProduction = process.env.NODE_ENV === "production";
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    if (newRefreshToken) {
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+    }
+
     return res
       .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed successfully",
-        ),
-      );
+      .json(new ApiResponse(200, {}, "Access token refreshed successfully"));
   },
 );
 
@@ -252,6 +316,18 @@ export const userNameAvailability = asyncHandler(
           { isAvailable },
           isAvailable ? "available" : "taken",
         ),
+      );
+  },
+);
+
+export const generateUsername = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const username = await userServices.generateRandomUsername();
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, { username }, "Username generated successfully"),
       );
   },
 );

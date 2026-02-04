@@ -10,18 +10,37 @@ import {
   uploadOnCloudinary,
 } from "../../utils/cloudinary";
 import jwt from "jsonwebtoken";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals,
+} from "unique-names-generator";
 
 class UserServices {
+  generateRandomUsername = async () => {
+    const randomName = uniqueNamesGenerator({
+      dictionaries: [adjectives, animals],
+      separator: "",
+      style: "capital",
+      length: 2,
+    });
+
+    // Add random number for extra uniqueness
+    const randomNumber = Math.floor(100 + Math.random() * 900);
+    return `${randomName}${randomNumber}`;
+  };
+
   signUp = async (email: string, userName: string, password: string) => {
     const exitstedUser = await User.findOne({ email });
-    if (exitstedUser) throw new ApiError(400, "User already exists");
+    if (exitstedUser)
+      throw new ApiError(409, "User with this email already exists");
 
     const normalizedUserName = userName.trim().toLowerCase();
     validateUsername(normalizedUserName);
     const existingUserName = await User.findOne({
       userName: normalizedUserName,
     });
-    if (existingUserName) throw new ApiError(400, "Username already exists");
+    if (existingUserName) throw new ApiError(409, "Username is already taken");
 
     const { saveOTP: otpDoc } = await sendOTPforVerification(
       email,
@@ -47,7 +66,7 @@ class UserServices {
       },
     ]);
 
-    if (!insertedUser) throw new ApiError(500, "Error while updating user");
+    if (!insertedUser) throw new ApiError(500, "Failed to create user account");
 
     // Clean up the OTP document after successful user creation
     await OTPModel.findByIdAndDelete(pendingOTP._id);
@@ -57,7 +76,7 @@ class UserServices {
         "-hashedPassword -refreshToken -createdAt -followersCount -followingCount -googleId -postsCount -role -bio",
       )
       .lean();
-    if (!user) throw new ApiError(500, "Error while fetching user data");
+    if (!user) throw new ApiError(500, "Failed to retrieve user data");
 
     const { accessToken, refreshToken } =
       await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
@@ -68,11 +87,15 @@ class UserServices {
     const user = (await User.findOne({ email }).select(
       "+hashedPassword +refreshToken -createdAt -updatedAt -__v -followersCount -followingCount -googleId -postsCount -role -bio",
     )) as unknown as IUser & IUserMethods;
-    if (!user) throw new ApiError(404, "User not found");
+    if (!user) throw new ApiError(404, "User account not found");
 
     const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) throw new ApiError(400, "Invalid password");
-    if (!user.isVerified) throw new ApiError(400, "User not verified");
+    if (!isPasswordValid) throw new ApiError(401, "Invalid password");
+    if (!user.isVerified)
+      throw new ApiError(
+        403,
+        "Account is not verified. Please verify your email.",
+      );
 
     const { accessToken, refreshToken } =
       await jwtServices.generateAccessAndRefreshTokens(user._id.toString());
@@ -108,7 +131,7 @@ class UserServices {
 
     if (userName && userName !== user.userName) {
       const isAvailable = await this.userNameAvailability(userName);
-      if (!isAvailable) throw new ApiError(400, "Username already exists");
+      if (!isAvailable) throw new ApiError(409, "Username is already taken");
       user.userName = userName.trim().toLowerCase();
     }
     if (fullName) user.fullName = fullName.trim();
@@ -213,9 +236,10 @@ class UserServices {
       resetToken,
       process.env.RESET_PASSWORD_SECRET!,
     );
-    if (!decodedToken) throw new ApiError(400, "Invalid token");
+    if (!decodedToken)
+      throw new ApiError(400, "Invalid or expired reset token");
     if ((decodedToken as any).purpose !== "password-reset")
-      throw new ApiError(400, "Invalid token");
+      throw new ApiError(400, "Invalid token type for password reset");
 
     const user = await User.findOne({
       email: (decodedToken as any).email,
@@ -237,7 +261,8 @@ class UserServices {
     if (!user) throw new ApiError(404, "User not found");
 
     const isPasswordValid = await user.comparePassword(oldPassword);
-    if (!isPasswordValid) throw new ApiError(400, "Invalid password");
+    if (!isPasswordValid)
+      throw new ApiError(401, "The old password provided is incorrect");
 
     user.hashedPassword = newPassword;
     await user.save();

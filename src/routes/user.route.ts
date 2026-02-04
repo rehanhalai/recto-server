@@ -16,6 +16,7 @@ import {
   verifyOTPforPasswordChange,
   VerifyOTPSaveUser,
   whoami,
+  generateUsername,
 } from "../controller/user.controller";
 import { VerifyJWT } from "../middlewares/auth.middleware";
 import { upload } from "../middlewares/multer.middleware";
@@ -99,6 +100,8 @@ router.route("/update-profileimage").patch(
 router
   .route("/check")
   .get(validate(userSchema.userNameAvailability), userNameAvailability);
+
+router.route("/generate-username").get(generateUsername);
 
 router.route("/whoami").get(VerifyJWT, whoami);
 
